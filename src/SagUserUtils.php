@@ -19,7 +19,7 @@ require_once('Sag.php');
  * Provides utilities to work with and manage CouchDB users, which wraps the
  * Sag class.
  *
- * @version %VERSION%
+ * @version 0.9.0
  * @package Utils
  */
 class SagUserUtils {
@@ -100,15 +100,13 @@ class SagUserUtils {
 
     $id = self::$USER_ID_PREFIX.$id;
 
-    $salt = self::makeSalt();
-
+    // Let the server handle hashing.
     return $this->sag->put($id, array(
       '_id' => $id,
       'type' => 'user',
       'name' => $name,
       'roles' => $roles,
-      'password_sha' => sha1($password . $salt),
-      'salt' => $salt
+      'password' => $password
     ));
   }
 
@@ -151,7 +149,8 @@ class SagUserUtils {
       throw new SagException('This does not look like a document: there is no _id.');
     }
 
-    if(empty($doc->salt) || empty($doc->password_sha)) {
+    // Check `password_scheme` for docs without `salt` or `password_sha`.
+    if(empty($doc->password_scheme) && (empty($doc->salt) || empty($doc->password_sha))) {
       throw new SagException('This does not look like a user or it is an admin. Change admin passwords via the server config.');
     }
 
@@ -159,7 +158,8 @@ class SagUserUtils {
       throw new SagException('Empty password are not allowed.');
     }
 
-    $doc->password_sha = sha1($newPassword + self::makeSalt());
+    // Let the server handle hashing.
+    $doc->password = $newPassword;
 
     return ($upload) ? $this->sag->put($doc->_id, $doc) : $doc;
   }
